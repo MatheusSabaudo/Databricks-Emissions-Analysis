@@ -32,12 +32,69 @@
       "name": "21257356",
       "displayName": "Total_Emissions_Per_State",
       "queryLines": [
-        "SELECT \n",
+        "WITH state_emissions AS (\n",
+        "  SELECT\n",
         "    state_abbr,\n",
         "    SUM(CAST(REPLACE(`GHG emissions mtons CO2e`, ',', '') AS DOUBLE)) AS Total_Emissions\n",
-        "FROM emissions.default.emissions_data\n",
-        "GROUP BY state_abbr\n",
-        "ORDER BY total_emissions DESC;"
+        "  FROM\n",
+        "    emissions.default.emissions_data\n",
+        "  GROUP BY\n",
+        "    state_abbr\n",
+        "),\n",
+        "totals AS (\n",
+        "  SELECT\n",
+        "    SUM(Total_Emissions) AS all_states_total\n",
+        "  FROM\n",
+        "    state_emissions\n",
+        ")\n",
+        "SELECT\n",
+        "  state_abbr,\n",
+        "  Total_Emissions,\n",
+        "  ROUND((Total_Emissions / all_states_total) * 100, 2) AS percentage_of_total,\n",
+        "  ROW_NUMBER() OVER (ORDER BY Total_Emissions DESC) AS rank,\n",
+        "  CASE\n",
+        "    WHEN ROW_NUMBER() OVER (ORDER BY Total_Emissions DESC) <= 10 THEN 'Top 10'\n",
+        "    ELSE 'Other'\n",
+        "  END AS category\n",
+        "FROM\n",
+        "  state_emissions CROSS JOIN totals\n",
+        "ORDER BY\n",
+        "  Total_Emissions DESC"
+      ]
+    },
+    {
+      "name": "2444934f",
+      "displayName": "Top10_Perc_Emissions",
+      "queryLines": [
+        "WITH state_emissions AS (\n",
+        "  SELECT\n",
+        "    state_abbr,\n",
+        "    SUM(CAST(REPLACE(`GHG emissions mtons CO2e`, ',', '') AS DOUBLE)) AS Total_Emissions\n",
+        "  FROM\n",
+        "    emissions.default.emissions_data\n",
+        "  GROUP BY\n",
+        "    state_abbr\n",
+        "),\n",
+        "totals AS (\n",
+        "  SELECT\n",
+        "    SUM(Total_Emissions) AS all_states_total\n",
+        "  FROM\n",
+        "    state_emissions\n",
+        ")\n",
+        "SELECT\n",
+        "  state_abbr,\n",
+        "  Total_Emissions,\n",
+        "  ROUND((Total_Emissions / all_states_total) * 100, 2) AS percentage_of_total,\n",
+        "  ROW_NUMBER() OVER (ORDER BY Total_Emissions DESC) AS rank,\n",
+        "  CASE\n",
+        "    WHEN ROW_NUMBER() OVER (ORDER BY Total_Emissions DESC) <= 10 THEN 'Top 10'\n",
+        "    ELSE 'Other'\n",
+        "  END AS category\n",
+        "FROM\n",
+        "  state_emissions CROSS JOIN totals\n",
+        "ORDER BY\n",
+        "  Total_Emissions DESC\n",
+        "LIMIT 10;"
       ]
     }
   ],
@@ -234,20 +291,50 @@
         },
         {
           "widget": {
-            "name": "c6e86e29",
+            "name": "top-10-emissions-x-state-1",
             "queries": [
               {
                 "name": "main_query",
                 "query": {
-                  "datasetName": "2ea60781",
+                  "datasetName": "2444934f",
+                  "fields": [
+                    {
+                      "name": "Total_Emissions",
+                      "expression": "`Total_Emissions`"
+                    },
+                    {
+                      "name": "state_abbr",
+                      "expression": "`state_abbr`"
+                    }
+                  ],
                   "disaggregated": true
                 }
               }
             ],
             "spec": {
               "version": 3,
-              "widgetType": "bar",
-              "encodings": {}
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 Emissions x State"
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "Total_Emissions",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "state_abbr",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
             }
           },
           "position": {
